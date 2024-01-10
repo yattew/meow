@@ -1,24 +1,4 @@
-type token_type =
-  | Illegal
-  | Eof
-  | Identifier of string
-  | Integer
-  | Assign
-  | Plus
-  | Comma
-  | Semicolon
-  | Lparan
-  | Rparan
-  | Lbrace
-  | Rbrace
-  (*keywords*)
-  | Function
-  | Let
-
-type token =
-  { token_type : token_type
-  ; literal : string
-  }
+open Token
 
 type lexer =
   { input : string
@@ -61,17 +41,34 @@ let read_identifier lexer =
   aux lexer []
 ;;
 
+let is_digit c =
+  let ascii_value = Char.code c in
+  ascii_value >= Char.code '0' && ascii_value <= Char.code '9'
+;;
+
+let read_number lexer =
+  let rec aux lexer acc =
+    if is_digit lexer.ch
+    then aux (read_char lexer) (lexer.ch :: acc)
+    else lexer, acc |> List.rev |> Utils.string_of_char_list
+  in
+  aux lexer []
+;;
+
 let lookup_ident = function
   | "fn" -> Function
   | "let" -> Let
   | x -> Identifier x
 ;;
 
-let rec skip_whitespace l = 
-  if l.ch = ' ' || l.ch = '\t' || l.ch = '\r' then skip_whitespace @@ read_char l
+let rec skip_whitespace l =
+  if l.ch = ' ' || l.ch = '\t' || l.ch = '\r' || l.ch='\n'
+  then skip_whitespace @@ read_char l
   else l
+;;
 
 let next_token lexer =
+  let lexer = skip_whitespace lexer in
   let { ch; _ } = lexer in
   match ch with
   | '=' -> read_char lexer, { token_type = Assign; literal = String.make 1 ch }
@@ -85,7 +82,10 @@ let next_token lexer =
   | '}' -> read_char lexer, { token_type = Rbrace; literal = String.make 1 ch }
   | x when is_letter x ->
     let lexer, literal = read_identifier lexer in
-    lexer, { token_type = lookup_ident literal; literal = String.make 1 ch }
+    lexer, { token_type = lookup_ident literal; literal }
+  | x when is_digit x ->
+    let lexer, number = read_number lexer in
+    lexer, { token_type = Integer number; literal = number }
   | _ ->
     read_char lexer, { token_type = Illegal; literal = String.make 1 zero_char }
 ;;

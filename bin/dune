@@ -1,4 +1,5 @@
 (executable
  (public_name meow)
  (name main)
- (libraries meow))
+ (libraries meow)
+ (flags (:standard -warn-error -A)))
