@@ -4,7 +4,9 @@ let sample_code =
    let add = fn(x, y) {\n\
    x + y;\n\
    };\n\
-   let result = add(five, ten);"
+   let result = add(five, ten);\n\
+   !-/*5;\n\
+   5 < 10 > 5;"
 ;;
 
 let rec text_lexer (l : Meow.Lexer.lexer) =
@@ -17,6 +19,8 @@ let rec text_lexer (l : Meow.Lexer.lexer) =
       "Illegal token found"
       l.ch
       (Char.code l.ch)
+  else if t.token_type = Meow.Token.Eof
+  then print_endline "Eof token reached"
   else text_lexer l'
 ;;
 

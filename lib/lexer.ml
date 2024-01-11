@@ -62,7 +62,7 @@ let lookup_ident = function
 ;;
 
 let rec skip_whitespace l =
-  if l.ch = ' ' || l.ch = '\t' || l.ch = '\r' || l.ch='\n'
+  if l.ch = ' ' || l.ch = '\t' || l.ch = '\r' || l.ch = '\n'
   then skip_whitespace @@ read_char l
   else l
 ;;
@@ -71,15 +71,23 @@ let next_token lexer =
   let lexer = skip_whitespace lexer in
   let { ch; _ } = lexer in
   match ch with
+  (*operators*)
   | '=' -> read_char lexer, { token_type = Assign; literal = String.make 1 ch }
+  | '+' -> read_char lexer, { token_type = Plus; literal = String.make 1 ch }
+  | '-' -> read_char lexer, { token_type = Minus; literal = String.make 1 ch }
+  | '*' -> read_char lexer, { token_type = Asterics; literal = String.make 1 ch }
+  | '/' -> read_char lexer, { token_type = Slash; literal = String.make 1 ch }
+  | '<' -> read_char lexer, { token_type = Lt; literal = String.make 1 ch }
+  | '>' -> read_char lexer, { token_type = Gt; literal = String.make 1 ch }
+  | '!' -> read_char lexer, { token_type = Bang; literal = String.make 1 ch }
   | ';' ->
     read_char lexer, { token_type = Semicolon; literal = String.make 1 ch }
   | '(' -> read_char lexer, { token_type = Lparan; literal = String.make 1 ch }
   | ')' -> read_char lexer, { token_type = Rparan; literal = String.make 1 ch }
   | ',' -> read_char lexer, { token_type = Comma; literal = String.make 1 ch }
-  | '+' -> read_char lexer, { token_type = Plus; literal = String.make 1 ch }
   | '{' -> read_char lexer, { token_type = Lbrace; literal = String.make 1 ch }
   | '}' -> read_char lexer, { token_type = Rbrace; literal = String.make 1 ch }
+  | '\000' -> lexer, { token_type = Eof; literal = String.make 1 zero_char }
   | x when is_letter x ->
     let lexer, literal = read_identifier lexer in
     lexer, { token_type = lookup_ident literal; literal }
