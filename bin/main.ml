@@ -6,10 +6,17 @@ let sample_code =
    };\n\
    let result = add(five, ten);\n\
    !-/*5;\n\
-   5 < 10 > 5;"
+   5 < 10 > 5;\n\
+   if (5 < 10) {\n\
+   return true;\n\
+   } else {\n\
+   return false;\n\
+   }\n\
+   10 == 10;\n\
+   10 != 9;"
 ;;
 
-let rec text_lexer (l : Meow.Lexer.lexer) =
+let rec test_lexer (l : Meow.Lexer.lexer) =
   let l', t = Meow.Lexer.next_token l in
   Meow.Token.print_token t;
   if t.token_type = Meow.Token.Illegal
@@ -21,11 +28,11 @@ let rec text_lexer (l : Meow.Lexer.lexer) =
       (Char.code l.ch)
   else if t.token_type = Meow.Token.Eof
   then print_endline "Eof token reached"
-  else text_lexer l'
+  else test_lexer l'
 ;;
 
 let () =
   print_endline "code: ";
   print_endline sample_code;
-  text_lexer @@ Meow.Lexer.init sample_code
+  test_lexer @@ Meow.Lexer.init sample_code
 ;;

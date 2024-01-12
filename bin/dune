@@ -2,4 +2,11 @@
  (public_name meow)
  (name main)
  (libraries meow)
+ (modules main)
  (flags (:standard -warn-error -A)))
+
+(executable
+  (name repl)
+  (modules repl)
+  (libraries meow)
+  (flags (:standard -warn-error -A)))

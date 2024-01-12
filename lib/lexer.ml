@@ -25,6 +25,12 @@ let read_char { input; read_position; _ } =
     }
 ;;
 
+let peak_char { input; read_position; _ } =
+  if read_position >= String.length input
+  then '\000'
+  else String.get input read_position
+;;
+
 let is_letter c =
   let ascii_value = Char.code c in
   (ascii_value >= Char.code 'A' && ascii_value <= Char.code 'Z')
@@ -58,6 +64,11 @@ let read_number lexer =
 let lookup_ident = function
   | "fn" -> Function
   | "let" -> Let
+  | "true" -> True
+  | "false" -> False
+  | "if" -> If
+  | "else" -> Else
+  | "return" -> Return
   | x -> Identifier x
 ;;
 
@@ -72,14 +83,21 @@ let next_token lexer =
   let { ch; _ } = lexer in
   match ch with
   (*operators*)
-  | '=' -> read_char lexer, { token_type = Assign; literal = String.make 1 ch }
+  | '=' ->
+    if peak_char lexer = '='
+    then read_char @@ read_char lexer, { token_type = Eq; literal = "==" }
+    else read_char lexer, { token_type = Assign; literal = String.make 1 ch }
   | '+' -> read_char lexer, { token_type = Plus; literal = String.make 1 ch }
   | '-' -> read_char lexer, { token_type = Minus; literal = String.make 1 ch }
-  | '*' -> read_char lexer, { token_type = Asterics; literal = String.make 1 ch }
+  | '*' ->
+    read_char lexer, { token_type = Asterics; literal = String.make 1 ch }
   | '/' -> read_char lexer, { token_type = Slash; literal = String.make 1 ch }
   | '<' -> read_char lexer, { token_type = Lt; literal = String.make 1 ch }
   | '>' -> read_char lexer, { token_type = Gt; literal = String.make 1 ch }
-  | '!' -> read_char lexer, { token_type = Bang; literal = String.make 1 ch }
+  | '!' ->
+    if peak_char lexer = '='
+    then read_char @@ read_char lexer, { token_type = Not_eq; literal = "!=" }
+    else read_char lexer, { token_type = Bang; literal = String.make 1 ch }
   | ';' ->
     read_char lexer, { token_type = Semicolon; literal = String.make 1 ch }
   | '(' -> read_char lexer, { token_type = Lparan; literal = String.make 1 ch }

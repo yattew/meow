@@ -12,6 +12,11 @@ type token_type =
   (*keywords*)
   | Function
   | Let
+  | True
+  | False
+  | If
+  | Else
+  | Return
   (*operators*)
   | Assign
   | Plus
@@ -21,6 +26,8 @@ type token_type =
   | Lt
   | Gt
   | Bang
+  | Eq
+  | Not_eq
 
 type token =
   { token_type : token_type
@@ -44,6 +51,11 @@ let print_token t =
      (*keywords*)
      | Function -> "Function"
      | Let -> "Let"
+     | True -> "True"
+     | False -> "False"
+     | If -> "If"
+     | Else -> "Else"
+     | Return -> "Return"
      (*operators*)
      | Assign -> "="
      | Plus -> "+"
@@ -52,6 +64,15 @@ let print_token t =
      | Slash -> "/"
      | Lt -> "<"
      | Gt -> ">"
-     | Bang -> "!")
+     | Bang -> "!"
+     | Eq -> "=="
+     | Not_eq -> "!=")
     t.literal
+;;
+
+let rec print_tokens = function
+  | [] -> ()
+  | x :: xs ->
+    print_token x;
+    print_tokens xs
 ;;
