@@ -18,7 +18,7 @@ let sample_code =
 
 let rec test_lexer (l : Meow.Lexer.lexer) =
   let l', t = Meow.Lexer.next_token l in
-  Meow.Token.print_token t;
+  print_endline @@ Meow.Token.show_token t;
   if t.token_type = Meow.Token.Illegal
   then
     Printf.printf

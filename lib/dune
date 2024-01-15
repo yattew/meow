@@ -1,3 +1,4 @@
 (library
  (name meow)
- (modules utils lexer token))
+ (preprocess (pps ppx_deriving.show))
+ (modules  ast lexer parser token utils))

@@ -2,11 +2,13 @@
  (public_name meow)
  (name main)
  (libraries meow)
+ (preprocess (pps ppx_deriving.show))
  (modules main)
  (flags (:standard -warn-error -A)))
 
 (executable
   (name repl)
   (modules repl)
+  (preprocess (pps ppx_deriving.show))
   (libraries meow)
   (flags (:standard -warn-error -A)))

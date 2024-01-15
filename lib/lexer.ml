@@ -6,6 +6,7 @@ type lexer =
   ; read_position : int
   ; ch : char
   }
+[@@deriving show]
 
 let zero_char = char_of_int 0
 
@@ -69,7 +70,7 @@ let lookup_ident = function
   | "if" -> If
   | "else" -> Else
   | "return" -> Return
-  | x -> Identifier x
+  | _ -> Identifier
 ;;
 
 let rec skip_whitespace l =
@@ -111,7 +112,7 @@ let next_token lexer =
     lexer, { token_type = lookup_ident literal; literal }
   | x when is_digit x ->
     let lexer, number = read_number lexer in
-    lexer, { token_type = Integer number; literal = number }
+    lexer, { token_type = Integer; literal = number }
   | _ ->
     read_char lexer, { token_type = Illegal; literal = String.make 1 zero_char }
 ;;
