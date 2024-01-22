@@ -1,13 +1,21 @@
-type identifier = string
-[@@deriving show]
+type operator = string [@@deriving show]
+type identifier = string [@@deriving show]
+type integer = int [@@deriving show]
 
-type program_node = statement_node list
-[@@deriving show]
 
-and statement_node =
+type statement_node =
   | Let_statement of (identifier * expression_node)
-  | If_statement
+  | Return_statement of expression_node
+  | Expression_statement of expression_node
 [@@deriving show]
 
-and expression_node = Expression
+and expression_node =
+  | Expression
+  | Identifier_expression of identifier
+  | Integer_expression of integer
+  | Operator_expression of operator * expression_node * expression_node
+  | Prefix_expression of operator * expression_node
 [@@deriving show]
+
+
+type program_node = statement_node list [@@deriving show]

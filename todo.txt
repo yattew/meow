@@ -1,0 +1,4 @@
+- add comments to functions
+- group diff parsers into their own modules
+- implement proper exception handling
+- write test cases
