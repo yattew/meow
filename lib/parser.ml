@@ -19,23 +19,37 @@ let init l =
        }
 ;;
 
-type precidence =
-  | Lowest
-  | Equals
-  | Less_greater
-  | Sum
-  | Product
-  | Prefix
-  | Call
+type precedence =
+  | Precedence_lowest
+  | Precedence_equals
+  | Precedence_less_greater
+  | Precedence_sum
+  | Precedence_product
+  | Precedence_prefix
+  | Precedence_call
 
-let get_precidence = function
-  | Lowest -> 0
-  | Equals -> 1
-  | Less_greater -> 2
-  | Sum -> 3
-  | Product -> 4
-  | Prefix -> 5
-  | Call -> 6
+let precedence_val = function
+  | Precedence_lowest -> 0
+  | Precedence_equals -> 1
+  | Precedence_less_greater -> 2
+  | Precedence_sum -> 3
+  | Precedence_product -> 4
+  | Precedence_prefix -> 5
+  | Precedence_call -> 6
+;;
+
+let token_precedence tt =
+  let open Token in
+  match tt with
+  | Plus -> Precedence_sum
+  | Minus -> Precedence_sum
+  | Asterics -> Precedence_product
+  | Slash -> Precedence_product
+  | Lt -> Precedence_less_greater
+  | Gt -> Precedence_less_greater
+  | Eq -> Precedence_equals
+  | Not_eq -> Precedence_equals
+  | _ -> Precedence_lowest
 ;;
 
 module ExpressionParser = struct
@@ -46,25 +60,74 @@ module ExpressionParser = struct
   ;;
 
   let parse_identifier parser =
-    Ast.Identifier_expression parser.cur_token.literal
+    parser, Ast.Identifier_expression parser.cur_token.literal
   ;;
 
   let parse_integer parser =
-    try Ast.Integer_expression (int_of_string parser.cur_token.literal) with
+    try
+      parser, Ast.Integer_expression (int_of_string parser.cur_token.literal)
+    with
     | Failure _ -> raise @@ Failure "could not parse integer"
   ;;
 
-  let prefix_fn = function
-    | Token.Identifier -> parse_identifier
-    | Token.Integer -> parse_integer
-    | _ -> raise @@ Failure "prefix_fn not implimented"
-  ;;
+  let rec parse_prefix_expression parser =
+    let prefix_operator = parser.cur_token.literal in
+    let parser' = next_token parser in
+    let parser'', right_expr = parse_expression parser' Precedence_prefix in
+    parser'', Ast.Prefix_expression (prefix_operator, right_expr)
 
-  let parse_expression parser precidence =
-    let _ = precidence in
+  and parse_infix_expression parser left =
+    let precedence = token_precedence parser.cur_token.token_type in
+    let parser' = next_token parser in
+    let parser'', right = parse_expression parser' precedence in
+    parser'', Ast.Infix_expression (left, parser.cur_token.literal, right)
+
+  and prefix_fn tt =
+    let open Token in
+    match tt with
+    | Identifier -> parse_identifier
+    | Integer -> parse_integer
+    | Bang -> parse_prefix_expression
+    | Minus -> parse_prefix_expression
+    | _ ->
+      raise
+      @@ Failure
+           (Printf.sprintf
+              "prefix_fn not implimented for type %s"
+              (Token.show_token_type tt))
+
+  and infix_fn tt =
+    let open Token in
+    match tt with
+    | Plus -> Some parse_infix_expression
+    | Minus -> Some parse_infix_expression
+    | Asterics -> Some parse_infix_expression
+    | Slash -> Some parse_infix_expression
+    | Lt -> Some parse_infix_expression
+    | Gt -> Some parse_infix_expression
+    | Eq -> Some parse_infix_expression
+    | Not_eq -> Some parse_infix_expression
+    | _ -> None
+
+  and parse_expression parser precedence =
+    print_endline @@ show_parser parser;
     let prefix = prefix_fn parser.cur_token.token_type in
-    let left_exp = prefix parser in
-    parser, left_exp
+    let parser', left_exp = prefix parser in
+    let rec aux parser left_exp =
+      let open Token in
+      if parser.peek_token.token_type = Semicolon
+         || precedence_val precedence
+            >= precedence_val @@ token_precedence parser.peek_token.token_type
+      then parser, left_exp
+      else (
+        let infix = infix_fn parser.peek_token.token_type in
+        match infix with
+        | None -> aux (next_token parser) left_exp
+        | Some f ->
+          let parser', left_exp' = f (next_token parser) left_exp in
+          aux parser' left_exp')
+    in
+    aux parser' left_exp
   ;;
 end
 
@@ -75,7 +138,7 @@ module StatementParser = struct
     match cur_token.token_type with
     | Token.Identifier ->
       let parser'', expr_node =
-        ExpressionParser.parse_expression parser' Lowest
+        ExpressionParser.parse_expression parser' Precedence_lowest
       in
       parser'', Ast.(Let_statement (cur_token.literal, expr_node))
     | _ -> raise @@ Failure "Expected Identifier"
@@ -83,12 +146,16 @@ module StatementParser = struct
 
   let parse_return_statement parser =
     let parser' = next_token parser in
-    let parser'', expr = ExpressionParser.parse_expression parser' Lowest in
+    let parser'', expr =
+      ExpressionParser.parse_expression parser' Precedence_lowest
+    in
     parser'', Ast.Return_statement expr
   ;;
 
   let parse_expression_statement parser =
-    let parser', expr_node = ExpressionParser.parse_expression parser Lowest in
+    let parser', expr_node =
+      ExpressionParser.parse_expression parser Precedence_lowest
+    in
     let parser'' =
       if parser'.peek_token.token_type = Token.Semicolon
       then next_token @@ next_token parser'
