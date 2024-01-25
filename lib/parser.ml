@@ -91,41 +91,41 @@ end = struct
   ;;
 
   let rec parse_prefix_expression parser =
-    let parser' = next_token parser in
-    let parser'', right_expr = parse_expression parser' Precedence_prefix in
+    let parser'', right_expr =
+      parse_expression (next_token parser) Precedence_prefix
+    in
     parser'', Ast.Prefix_expression (parser.cur_token.literal, right_expr)
 
   and parse_grouped_expression parser =
-    let parser' = next_token parser in
-    let parser'', expr = parse_expression parser' Precedence_lowest in
-    expect_peek parser'' Token.Rparen;
-    next_token parser'', expr
+    let parser', expr =
+      parse_expression (next_token parser) Precedence_lowest
+    in
+    expect_peek parser' Token.Rparen;
+    next_token parser', expr
 
   and parse_if_expression parser =
     expect_peek parser Token.Lparen;
     let parser', condition =
       parse_expression (next_token parser) Precedence_lowest
     in
+    expect_cur parser' Token.Rparen;
+    expect_peek parser' Token.Lbrace;
     let parser'', consequence =
-      expect_cur parser' Token.Rparen;
-      expect_peek parser' Token.Lbrace;
       StatementParser.parse_block_statement (next_token parser')
     in
     let parser''', alternative =
-      if parser''.cur_token.token_type == Token.Else
-      then (
+      match parser''.cur_token.token_type with
+      | Token.Else ->
         let parser''' = next_token parser'' in
         expect_cur parser''' Token.Lbrace;
-        StatementParser.parse_block_statement parser''')
-      else parser'', []
+        StatementParser.parse_block_statement parser'''
+      | _ -> next_token parser'', []
     in
-    ( next_token parser'''
-    , Ast.If_expression { condition; consequence; alternative } )
+    parser''', Ast.If_expression { condition; consequence; alternative }
 
   and parse_infix_expression parser left =
     let precedence = precedence_of_token parser.cur_token in
-    let parser' = next_token parser in
-    let parser'', right = parse_expression parser' precedence in
+    let parser'', right = parse_expression (next_token parser) precedence in
     parser'', Ast.Infix_expression (left, parser.cur_token.literal, right)
 
   and prefix_fn t =
@@ -168,16 +168,14 @@ end = struct
             >= int_of_precedence @@ precedence_of_token parser.peek_token
       then parser, left_exp
       else (
-        let infix = infix_of_parser parser.peek_token in
-        match infix with
+        match infix_of_parser parser.peek_token with
         | None -> aux (next_token parser) left_exp
         | Some f ->
           let parser', left_exp' = f (next_token parser) left_exp in
           aux parser' left_exp')
     in
     let parser', left_exp = prefix_fn parser.cur_token parser in
-    let parser'', exp = aux parser' left_exp in
-    parser'', exp
+    aux parser' left_exp
   ;;
 end
 
@@ -195,7 +193,7 @@ end = struct
         Precedence_lowest
     in
     ( next_token @@ next_token parser''
-    , Ast.(Let_statement (cur_token.literal, expr_node)) )
+    , Ast.Let_statement (cur_token.literal, expr_node) )
   ;;
 
   let parse_return_statement parser =
