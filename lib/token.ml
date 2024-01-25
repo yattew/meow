@@ -5,8 +5,8 @@ type token_type =
   | Integer
   | Comma
   | Semicolon
-  | Lparan
-  | Rparan
+  | Lparen
+  | Rparen
   | Lbrace
   | Rbrace
   (*keywords*)

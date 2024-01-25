@@ -101,8 +101,8 @@ let next_token lexer =
     else read_char lexer, { token_type = Bang; literal = String.make 1 ch }
   | ';' ->
     read_char lexer, { token_type = Semicolon; literal = String.make 1 ch }
-  | '(' -> read_char lexer, { token_type = Lparan; literal = String.make 1 ch }
-  | ')' -> read_char lexer, { token_type = Rparan; literal = String.make 1 ch }
+  | '(' -> read_char lexer, { token_type = Lparen; literal = String.make 1 ch }
+  | ')' -> read_char lexer, { token_type = Rparen; literal = String.make 1 ch }
   | ',' -> read_char lexer, { token_type = Comma; literal = String.make 1 ch }
   | '{' -> read_char lexer, { token_type = Lbrace; literal = String.make 1 ch }
   | '}' -> read_char lexer, { token_type = Rbrace; literal = String.make 1 ch }

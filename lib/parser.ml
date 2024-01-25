@@ -52,7 +52,37 @@ let precedence_of_token tt =
   | _ -> Precedence_lowest
 ;;
 
-module ExpressionParser = struct
+let expect_peek parser t =
+  let open Token in
+  if parser.peek_token.token_type != t
+  then
+    raise
+    @@ Failure
+         (Printf.sprintf
+            "Expected %s found %s at %d"
+            (Token.show_token_type t)
+            (Token.show_token_type parser.peek_token.token_type)
+            parser.lexer.position)
+  else ()
+;;
+
+let expect_cur parser t =
+  let open Token in
+  if parser.cur_token.token_type != t
+  then
+    raise
+    @@ Failure
+         (Printf.sprintf
+            "Expected cur token %s found %s at %d"
+            (Token.show_token_type t)
+            (Token.show_token_type parser.peek_token.token_type)
+            parser.lexer.position)
+  else ()
+;;
+
+module rec ExpressionParser : sig
+  val parse_expression : parser -> precedence -> parser * Ast.expression_node
+end = struct
   let parse_integer parser =
     try
       parser, Ast.Integer_expression (int_of_string parser.cur_token.literal)
@@ -68,13 +98,29 @@ module ExpressionParser = struct
   and parse_grouped_expression parser =
     let parser' = next_token parser in
     let parser'', expr = parse_expression parser' Precedence_lowest in
-    if parser''.peek_token.token_type != Token.Rparan
-    then
-      raise
-      @@ Failure
-           (Printf.sprintf "Expected Rparan found %s"
-            @@ Token.show_token_type parser''.peek_token.token_type)
-    else next_token parser'', expr
+    expect_peek parser'' Token.Rparen;
+    next_token parser'', expr
+
+  and parse_if_expression parser =
+    expect_peek parser Token.Lparen;
+    let parser', condition =
+      parse_expression (next_token parser) Precedence_lowest
+    in
+    let parser'', consequence =
+      expect_cur parser' Token.Rparen;
+      expect_peek parser' Token.Lbrace;
+      StatementParser.parse_block_statement (next_token parser')
+    in
+    let parser''', alternative =
+      if parser''.cur_token.token_type == Token.Else
+      then (
+        let parser''' = next_token parser'' in
+        expect_cur parser''' Token.Lbrace;
+        StatementParser.parse_block_statement parser''')
+      else parser'', []
+    in
+    ( next_token parser'''
+    , Ast.If_expression { condition; consequence; alternative } )
 
   and parse_infix_expression parser left =
     let precedence = precedence_of_token parser.cur_token in
@@ -92,7 +138,8 @@ module ExpressionParser = struct
     | Minus -> parse_prefix_expression
     | True -> fun p -> p, Boolean_expression true
     | False -> fun p -> p, Boolean_expression false
-    | Lparan -> parse_grouped_expression
+    | Lparen -> parse_grouped_expression
+    | If -> parse_if_expression
     | _ ->
       raise
       @@ Failure
@@ -129,21 +176,26 @@ module ExpressionParser = struct
           aux parser' left_exp')
     in
     let parser', left_exp = prefix_fn parser.cur_token parser in
-    aux parser' left_exp
+    let parser'', exp = aux parser' left_exp in
+    parser'', exp
   ;;
 end
 
-module StatementParser = struct
+and StatementParser : sig
+  val parse_block_statement : parser -> parser * Ast.block_statement_node
+  val parse_statement : parser -> parser * Ast.statement_node
+end = struct
   let parse_let_statement parser =
+    expect_peek parser Token.Identifier;
     let parser' = next_token parser in
     let cur_token = parser'.cur_token in
-    match cur_token.token_type with
-    | Token.Identifier ->
-      let parser'', expr_node =
-        ExpressionParser.parse_expression (next_token @@ next_token parser') Precedence_lowest
-      in
-     next_token @@ next_token parser'', Ast.(Let_statement (cur_token.literal, expr_node))
-    | _ -> raise @@ Failure "Expected Identifier"
+    let parser'', expr_node =
+      ExpressionParser.parse_expression
+        (next_token @@ next_token parser')
+        Precedence_lowest
+    in
+    ( next_token @@ next_token parser''
+    , Ast.(Let_statement (cur_token.literal, expr_node)) )
   ;;
 
   let parse_return_statement parser =
@@ -158,15 +210,22 @@ module StatementParser = struct
     let parser', expr_node =
       ExpressionParser.parse_expression parser Precedence_lowest
     in
-    let parser'' =
-      if parser'.peek_token.token_type = Token.Semicolon
-      then next_token @@ next_token parser'
-      else parser'
-    in
-    parser'', Ast.Expression_statement expr_node
+    next_token @@ next_token parser', Ast.Expression_statement expr_node
   ;;
 
-  let parse_statement parser =
+  let rec parse_block_statement parser =
+    let parser' = next_token parser in
+    let rec aux parser block =
+      if parser.cur_token.token_type != Token.Rbrace
+         && parser.cur_token.token_type != Token.Eof
+      then (
+        let parser', stmt = parse_statement parser in
+        aux parser' (stmt :: block))
+      else next_token parser, List.rev block
+    in
+    aux parser' []
+
+  and parse_statement parser =
     match parser.cur_token.token_type with
     | Token.Let -> parse_let_statement parser
     | Token.Return -> parse_return_statement parser
@@ -177,8 +236,7 @@ end
 let parse_program parser =
   let rec aux parser program =
     if parser.cur_token.token_type = Token.Eof
-    then (
-      List.rev program)
+    then List.rev program
     else (
       let parser', stmt = StatementParser.parse_statement parser in
       aux parser' (stmt :: program))
