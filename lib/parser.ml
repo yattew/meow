@@ -49,6 +49,7 @@ let precedence_of_token tt =
   | Gt -> Precedence_less_greater
   | Eq -> Precedence_equals
   | Not_eq -> Precedence_equals
+  | Lparen -> Precedence_call
   | _ -> Precedence_lowest
 ;;
 
@@ -59,7 +60,7 @@ let expect_peek parser t =
     raise
     @@ Failure
          (Printf.sprintf
-            "Expected %s found %s at %d"
+            "Expected peek token %s found %s at %d"
             (Token.show_token_type t)
             (Token.show_token_type parser.peek_token.token_type)
             parser.lexer.position)
@@ -119,7 +120,7 @@ end = struct
         let parser''' = next_token parser'' in
         expect_cur parser''' Token.Lbrace;
         StatementParser.parse_block_statement parser'''
-      | _ -> next_token parser'', []
+      | _ -> parser'', []
     in
     parser''', Ast.If_expression { condition; consequence; alternative }
 
@@ -155,6 +156,28 @@ end = struct
     let parser'', right = parse_expression (next_token parser) precedence in
     parser'', Ast.Infix_expression (left, parser.cur_token.literal, right)
 
+  and parse_call_arguments parser =
+    let open Token in
+    let parser = next_token parser in
+    if parser.cur_token.token_type = Rparen
+    then next_token parser, []
+    else (
+      let rec iter_params parser exp_list =
+        let parser', exp = parse_expression parser Precedence_lowest in
+        if parser'.peek_token.token_type != Comma
+        then parser', exp :: exp_list |> List.rev
+        else iter_params (next_token @@ next_token parser') (exp :: exp_list)
+      in
+      let parser'', param_list = iter_params parser [] in
+      print_endline @@ show_parser parser'';
+      expect_peek parser'' Rparen;
+      next_token parser'', param_list)
+
+  and parse_call_expression parser left =
+    let parser', args = parse_call_arguments parser in
+    ( next_token @@ next_token parser'
+    , Ast.Call_expression { func_exp = left; args } )
+
   and prefix_fn t =
     let open Token in
     let open Ast in
@@ -186,6 +209,7 @@ end = struct
     | Gt -> Some parse_infix_expression
     | Eq -> Some parse_infix_expression
     | Not_eq -> Some parse_infix_expression
+    | Lparen -> Some parse_call_expression
     | _ -> None
 
   and parse_expression parser precedence =
@@ -229,7 +253,7 @@ end = struct
     let parser'', expr =
       ExpressionParser.parse_expression parser' Precedence_lowest
     in
-    parser'', Ast.Return_statement expr
+    next_token @@ next_token parser'', Ast.Return_statement expr
   ;;
 
   let parse_expression_statement parser =
@@ -247,7 +271,7 @@ end = struct
       then (
         let parser', stmt = parse_statement parser in
         aux parser' (stmt :: block))
-      else next_token parser, List.rev block
+      else parser, List.rev block
     in
     aux parser' []
 

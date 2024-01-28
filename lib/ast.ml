@@ -27,6 +27,10 @@ and expression_node =
       { parameters : identifier list
       ; body : block_statement_node
       }
+  | Call_expression of
+      { func_exp : expression_node
+      ; args : expression_node list
+      }
 [@@deriving show]
 
 type program_node = statement_node list [@@deriving show]
@@ -71,6 +75,11 @@ and string_of_expression = function
       "fn (%s) {\n%s\n}"
       (parameters |> List.map show_identifier |> String.concat ",")
       (body |> List.map string_of_statement |> String.concat "\n")
+  | Call_expression { func_exp; args } ->
+    Printf.sprintf
+      "%s(%s)"
+      (string_of_expression func_exp)
+      (args |> List.map string_of_expression |> String.concat ",")
 ;;
 
 let string_of_program program =
