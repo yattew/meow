@@ -123,6 +123,33 @@ end = struct
     in
     parser''', Ast.If_expression { condition; consequence; alternative }
 
+  and parse_function_params parser =
+    let open Token in
+    let parser = next_token parser in
+    if parser.cur_token.token_type = Rparen
+    then parser, []
+    else (
+      let rec iter_params parser param_list =
+        if parser.peek_token.token_type != Comma
+        then parser, parser.cur_token.literal :: param_list |> List.rev
+        else
+          iter_params
+            (next_token @@ next_token parser)
+            (parser.cur_token.literal :: param_list)
+      in
+      let parser'', param_list = iter_params parser [] in
+      expect_peek parser'' Rparen;
+      next_token parser'', param_list)
+
+  and parse_function_expression parser =
+    expect_peek parser Token.Lparen;
+    let parser', parameters = parse_function_params (next_token parser) in
+    expect_peek parser' Token.Lbrace;
+    let parser'', body =
+      StatementParser.parse_block_statement (next_token parser')
+    in
+    parser'', Ast.Fn_expression { parameters; body }
+
   and parse_infix_expression parser left =
     let precedence = precedence_of_token parser.cur_token in
     let parser'', right = parse_expression (next_token parser) precedence in
@@ -140,6 +167,7 @@ end = struct
     | False -> fun p -> p, Boolean_expression false
     | Lparen -> parse_grouped_expression
     | If -> parse_if_expression
+    | Function -> parse_function_expression
     | _ ->
       raise
       @@ Failure

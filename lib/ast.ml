@@ -23,6 +23,10 @@ and expression_node =
       ; consequence : block_statement_node
       ; alternative : block_statement_node
       }
+  | Fn_expression of
+      { parameters : identifier list
+      ; body : block_statement_node
+      }
 [@@deriving show]
 
 type program_node = statement_node list [@@deriving show]
@@ -62,6 +66,11 @@ and string_of_expression = function
          Printf.sprintf
            "else{\n%s\n}"
            (alt |> List.map string_of_statement |> String.concat "\n"))
+  | Fn_expression { parameters; body } ->
+    Printf.sprintf
+      "fn (%s) {\n%s\n}"
+      (parameters |> List.map show_identifier |> String.concat ",")
+      (body |> List.map string_of_statement |> String.concat "\n")
 ;;
 
 let string_of_program program =
