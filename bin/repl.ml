@@ -1,21 +1,18 @@
-let prompt = "=> "
+open Meow
 
-let extract_tokens lexer =
-  let rec aux lexer acc =
-    let lexer', token = Meow.Lexer.next_token lexer in
-    if token.token_type = Meow.Token.Eof
-    then List.rev acc
-    else aux lexer' (token :: acc)
-  in
-  aux lexer []
-;;
+let prompt = "=> "
 
 let rec start_repl () =
   print_string prompt;
   flush stdout;
-  let input = read_line () in
-  let lexer = Meow.Lexer.init input in
-  lexer |> extract_tokens |> Meow.Token.print_tokens;
+  ()
+  |> read_line
+  |> Lexer.init
+  |> Parser.init
+  |> Parser.parse_program
+  |> Evaluator.eval_program
+  |> Object.string_of_object_type
+  |> print_endline;
   start_repl ()
 ;;
 
