@@ -11,3 +11,7 @@ let string_of_object_type = function
   | False -> "false"
   | Null -> "Null"
 ;;
+
+let object_type_of_bool = function
+  | true -> True
+  | false -> False

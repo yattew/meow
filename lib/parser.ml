@@ -115,9 +115,9 @@ end = struct
       StatementParser.parse_block_statement (next_token parser')
     in
     let parser''', alternative =
-      match parser''.cur_token.token_type with
+      match parser''.peek_token.token_type with
       | Token.Else ->
-        let parser''' = next_token parser'' in
+        let parser''' = next_token @@ next_token parser'' in
         expect_cur parser''' Token.Lbrace;
         StatementParser.parse_block_statement parser'''
       | _ -> parser'', []
