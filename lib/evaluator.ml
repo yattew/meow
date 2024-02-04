@@ -7,6 +7,7 @@ let is_truthy obj =
   | True -> true
   | False -> false
   | Null -> false
+  | Return_value _ -> raise (Failure "cannot use operator on a return")
 ;;
 
 let eval_bang_operator_expression = function
@@ -15,6 +16,7 @@ let eval_bang_operator_expression = function
   | True -> False
   | False -> True
   | Null -> True
+  | Return_value _ -> raise (Failure "cannot use ! operator on a return")
 ;;
 
 let eval_minus_operator_expression = function
@@ -88,12 +90,20 @@ and eval_expression node =
   | _ -> Null
 
 and eval_statement = function
-  | Ast.Let_statement _ -> Null
-  | Ast.Return_statement _ -> Null
-  | Ast.Expression_statement expr -> eval_expression expr
+  | Let_statement _ -> Null
+  | Return_statement expr -> Return_value (eval_expression expr)
+  | Expression_statement expr -> eval_expression expr
 
 and eval_statements stmts =
-  List.fold_left (fun _ i -> eval_statement i) Null stmts
+  let rec aux prev = function
+    | [] -> prev
+    | x :: xs ->
+      let evaluated_obj = eval_statement x in
+      (match evaluated_obj with
+       | Return_value v -> Return_value v
+       | _ -> aux evaluated_obj xs)
+  in
+  aux Null stmts
 
 and eval_block_statement stmts = eval_statements stmts
 

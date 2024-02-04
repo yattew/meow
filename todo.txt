@@ -1,4 +1,4 @@
 - add comments to functions
-- group diff parsers into their own modules
 - implement proper exception handling
+- implement error object in the evaluator
 - write test cases
