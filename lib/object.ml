@@ -17,3 +17,30 @@ let rec string_of_object_type = function
 let object_type_of_bool = function
   | true -> True
   | false -> False
+;;
+
+module Env = struct
+  type table_entry = string * object_type
+  type table = table_entry list
+
+  let add (table : table) (name : string) (item : object_type) =
+    let rec aux table name item =
+      match table with
+      | [] -> [ name, item ]
+      | (name', _) :: xs when name' = name -> (name, item) :: xs
+      | ((_, _) as x) :: xs -> x :: aux xs name item
+    in
+    aux table name item
+  ;;
+
+  let rec get table name =
+    match table with
+    | [] -> None
+    | x :: xs ->
+      (match x with
+       | n, i when n = name -> Some i
+       | _ -> get xs name)
+  ;;
+
+  let init_env = []
+end
