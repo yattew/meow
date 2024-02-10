@@ -7,6 +7,7 @@ let is_truthy obj =
   | True -> true
   | False -> false
   | Null -> false
+  | Function _ -> raise (Failure "cannot use operator on a function expression")
   | Return_value _ -> raise (Failure "cannot use operator on a return")
 ;;
 
@@ -16,6 +17,8 @@ let eval_bang_operator_expression _ = function
   | True -> False
   | False -> True
   | Null -> True
+  | Function _ ->
+    raise (Failure "cannot use ! operator on a function expression")
   | Return_value _ -> raise (Failure "cannot use ! operator on a return")
 ;;
 
@@ -93,6 +96,27 @@ and eval_expression env node =
      | None ->
        raise
          (Failure (Printf.sprintf "Identifier %s not found in enviornment" id)))
+  | Fn_expression { parameters; body } -> Function { parameters; body; env }
+  | Call_expression { func_exp; args } ->
+    let fn = eval_expression env func_exp in
+    let evaluated_args = List.map (eval_expression env) args in
+    let rec env_table_of_args names objects =
+      match names, objects with
+      | [], [] -> Env.init_env
+      | name :: names, obj :: objects ->
+        Env.add (env_table_of_args names objects) name obj
+      | _ -> raise (Failure "unreachable, number of arguments != params")
+    in
+    (match fn with
+     | Function { parameters; body; env = internal_env } ->
+       let param_env = env_table_of_args parameters evaluated_args in
+       let fn_env =
+         Env.extend_env param_env @@ Env.extend_env env internal_env
+       in
+       (match eval_block_statement fn_env body with
+        | Return_value obj -> obj
+        | obj -> obj)
+     | _ -> Null)
   | _ -> Null
 
 and eval_statement env = function

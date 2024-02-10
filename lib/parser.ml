@@ -169,13 +169,12 @@ end = struct
         else iter_params (next_token @@ next_token parser') (exp :: exp_list)
       in
       let parser'', param_list = iter_params parser [] in
-      print_endline @@ show_parser parser'';
       expect_peek parser'' Rparen;
       next_token parser'', param_list)
 
   and parse_call_expression parser left =
     let parser', args = parse_call_arguments parser in
-    ( next_token @@ next_token parser'
+    ( next_token parser'
     , Ast.Call_expression { func_exp = left; args } )
 
   and prefix_fn t =
