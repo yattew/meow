@@ -8,6 +8,7 @@ let is_truthy obj =
   | False -> false
   | Null -> false
   | Function _ -> raise (Failure "cannot use operator on a function expression")
+  | Builtin _ -> raise (Failure "cannot use operator on a builtin")
   | Return_value _ -> raise (Failure "cannot use operator on a return")
 ;;
 
@@ -20,6 +21,7 @@ let eval_bang_operator_expression _ = function
   | Function _ ->
     raise (Failure "cannot use ! operator on a function expression")
   | Return_value _ -> raise (Failure "cannot use ! operator on a return")
+  | Builtin _ -> raise (Failure "cannot use ! operator on a builtin")
 ;;
 
 let eval_minus_operator_expression _ = function
@@ -100,15 +102,15 @@ and eval_expression env node =
   | Call_expression { func_exp; args } ->
     let fn = eval_expression env func_exp in
     let evaluated_args = List.map (eval_expression env) args in
-    let rec env_table_of_args names objects =
-      match names, objects with
-      | [], [] -> Env.init_env
-      | name :: names, obj :: objects ->
-        Env.add (env_table_of_args names objects) name obj
-      | _ -> raise (Failure "unreachable, number of arguments != params")
-    in
     (match fn with
      | Function { parameters; body; env = internal_env } ->
+       let rec env_table_of_args names objects =
+         match names, objects with
+         | [], [] -> Env.init_env
+         | name :: names, obj :: objects ->
+           Env.add (env_table_of_args names objects) name obj
+         | _ -> raise (Failure "unreachable, number of arguments != params")
+       in
        let param_env = env_table_of_args parameters evaluated_args in
        let fn_env =
          Env.extend_env param_env @@ Env.extend_env env internal_env
@@ -116,8 +118,9 @@ and eval_expression env node =
        (match eval_block_statement fn_env body with
         | Return_value obj -> obj
         | obj -> obj)
-     | _ -> Null)
-  | _ -> Null
+     | Builtin fn -> fn env evaluated_args
+     | _ -> raise (Failure "only functions and builtins can be called"))
+  | _ -> raise (Failure "unknown expression found")
 
 and eval_statement env = function
   | Let_statement (id, exp) -> eval_expression env exp |> Env.add env id, Null
@@ -139,7 +142,15 @@ and eval_block_statement env stmts =
   match eval_statements env stmts with
   | _, res -> res
 
-and eval_program env = function
-  | [] -> env, Null
-  | xs -> eval_statements env xs
+and eval_program env program =
+  let rec aux env prev program =
+    match program with
+    | [] -> env, prev
+    | x :: xs ->
+      let env', evaluated_obj = eval_statement env x in
+      (match evaluated_obj with
+       | Return_value v -> aux env' v xs
+       | _ -> aux env' evaluated_obj xs)
+  in
+  aux env Null program
 ;;

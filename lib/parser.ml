@@ -174,7 +174,7 @@ end = struct
 
   and parse_call_expression parser left =
     let parser', args = parse_call_arguments parser in
-    ( next_token parser'
+    ( parser'
     , Ast.Call_expression { func_exp = left; args } )
 
   and prefix_fn t =

@@ -1,4 +1,4 @@
 (library
  (name meow)
  (preprocess (pps ppx_deriving.show))
- (modules  ast evaluator lexer object parser token utils))
+ (modules  ast builtins evaluator lexer object parser token utils))

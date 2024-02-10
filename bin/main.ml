@@ -1,38 +1,69 @@
-let sample_code =
-  "let five = 5;\n\
-   let ten = 10;\n\
-   let add = fn(x, y) {\n\
-   x + y;\n\
-   };\n\
-   let result = add(five, ten);\n\
-   !-/*5;\n\
-   5 < 10 > 5;\n\
-   if (5 < 10) {\n\
-   return true;\n\
-   } else {\n\
-   return false;\n\
-   }\n\
-   10 == 10;\n\
-   10 != 9;"
+open Meow
+
+let main_env =
+  let open Object in
+  Env.add Env.init_env "print_endl" (Object.Builtin Builtins.print_endl)
 ;;
 
-let rec test_lexer (l : Meow.Lexer.lexer) =
-  let l', t = Meow.Lexer.next_token l in
-  print_endline @@ Meow.Token.show_token t;
-  if t.token_type = Meow.Token.Illegal
-  then
-    Printf.printf
-      "%s, char: %c with code: %d"
-      "Illegal token found"
-      l.ch
-      (Char.code l.ch)
-  else if t.token_type = Meow.Token.Eof
-  then print_endline "Eof token reached"
-  else test_lexer l'
+let rec start_repl env =
+  print_string "=> ";
+  flush stdout;
+  (try
+     let env, res =
+       ()
+       |> read_line
+       |> Lexer.init
+       |> Parser.init
+       |> Parser.parse_program
+       |> Evaluator.eval_program env
+     in
+     Object.string_of_object_type res |> print_endline;
+     (*
+        print_endline @@ Object.Env.pp_env Object.string_of_object_type env;
+     *)
+     start_repl env
+   with
+   | Failure msg -> print_endline msg);
+  start_repl env
+;;
+
+let read_file filename =
+  try
+    let channel = open_in filename in
+    try
+      let rec read_lines acc =
+        try
+          let line = input_line channel in
+          read_lines (line :: acc)
+        with
+        | End_of_file -> List.rev acc
+      in
+      let lines = read_lines [] in
+      close_in channel;
+      lines
+    with
+    | ex ->
+      close_in channel;
+      raise ex
+  with
+  | Sys_error msg ->
+    Printf.eprintf "Error: %s\n" msg;
+    []
 ;;
 
 let () =
-  print_endline "code: ";
-  print_endline sample_code;
-  test_lexer @@ Meow.Lexer.init sample_code
+  if Array.length Sys.argv > 1
+  then (
+    let file_name = Sys.argv.(1) in
+    let lines = read_file file_name in
+    let text = String.concat "\n" lines in
+    let _, _=
+      text
+      |> Lexer.init
+      |> Parser.init
+      |> Parser.parse_program
+      |> Evaluator.eval_program main_env
+    in
+    ())
+  else start_repl main_env
 ;;
