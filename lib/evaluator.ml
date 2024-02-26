@@ -38,7 +38,7 @@ let eval_prefix_expression env op right =
   match op with
   | "!" -> eval_bang_operator_expression env right
   | "-" -> eval_minus_operator_expression env right
-  | _ -> Null
+  | s -> raise (Failure (Printf.sprintf "cannot use %s as a prefix operator" s))
 ;;
 
 let eval_integer_infix_expression i1 op i2 =

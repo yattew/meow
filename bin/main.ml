@@ -57,7 +57,7 @@ let () =
     let file_name = Sys.argv.(1) in
     let lines = read_file file_name in
     let text = String.concat "\n" lines in
-    let _, _=
+    let _, _ =
       text
       |> Lexer.init
       |> Parser.init

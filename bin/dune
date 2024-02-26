@@ -4,4 +4,5 @@
  (libraries meow)
  (preprocess (pps ppx_deriving.show))
  (modules main)
- (flags (:standard -warn-error -A)))
+ (flags (:standard -warn-error -A))
+ (ocamlopt_flags (:standard -O3)))
