@@ -1,61 +1,4 @@
-module Env = struct
-  type 'a table_entry = string * 'a
-  type 'a table = 'a table_entry list
-  type 'a env = 'a table list
-
-  let pp_table_entry show_val entry =
-    match entry with
-    | s, item -> Printf.sprintf "(%s,%s)" s (show_val item)
-  ;;
-
-  let pp_table show_val table =
-    table
-    |> List.map @@ pp_table_entry show_val
-    |> String.concat ", "
-    |> Printf.sprintf "[ %s ]"
-  ;;
-
-  let pp_env show_val env =
-    env
-    |> List.map @@ pp_table show_val
-    |> String.concat ", "
-    |> Printf.sprintf "[ %s ]"
-  ;;
-
-  let add (tables : 'a env) (name : string) (item : 'a) =
-    let rec aux table name item =
-      match table with
-      | [] -> [ name, item ]
-      | (name', _) :: xs when name' = name -> (name, item) :: xs
-      | ((_, _) as x) :: xs -> x :: aux xs name item
-    in
-    match tables with
-    | [] -> [ [ name, item ] ]
-    | table :: rest -> aux table name item :: rest
-  ;;
-
-  let extend_env env1 env2 = env1 @ env2
-
-  let rec table_get table name =
-    match table with
-    | [] -> None
-    | x :: xs ->
-      (match x with
-       | n, i when n = name -> Some i
-       | _ -> table_get xs name)
-  ;;
-
-  let rec get tables name =
-    match tables with
-    | [] -> None
-    | table :: xs ->
-      (match table_get table name with
-       | None -> get xs name
-       | Some v -> Some v)
-  ;;
-
-  let init_env = []
-end
+module StringMap = Map.Make (String)
 
 type object_type =
   | Integer of int
@@ -65,10 +8,78 @@ type object_type =
   | Function of
       { parameters : Ast.identifier list
       ; body : Ast.block_statement_node
-      ; env : object_type Env.env
+      ; env : env
       }
-  | Builtin of (object_type Env.env -> object_type list -> object_type)
+  | Builtin of (env -> object_type list -> object_type)
   | Return_value of object_type
+
+and table = object_type StringMap.t
+and env = table Array.t * int
+
+let env_size = 10000
+
+let pp_table_entry show_val entry =
+  match entry with
+  | s, item -> Printf.sprintf "(%s,%s)" s (show_val item)
+;;
+
+let pp_table show_val table =
+  table
+  |> List.map @@ pp_table_entry show_val
+  |> String.concat ", "
+  |> Printf.sprintf "[ %s ]"
+;;
+
+let pp_env show_val env =
+  env
+  |> List.map @@ pp_table show_val
+  |> String.concat ", "
+  |> Printf.sprintf "[ %s ]"
+;;
+
+let add (env : env) (name : string) (item : 'a) =
+  match env with
+  | arr, fill ->
+    if fill >= env_size
+    then failwith "env filled"
+    else arr.(fill) <- StringMap.add name item arr.(fill);
+    arr, fill
+;;
+
+let extend_env (env1 : env) (env2 : env) =
+  match env1, env2 with
+  | (arr1, fill1), (arr2, fill2) ->
+    if fill1 + fill2 > env_size
+    then failwith "cant' extend max env size reached"
+    else (
+      let rec aux arr1 fill1 arr2 fill2 it =
+        if it = fill1
+        then arr2, fill2
+        else (
+          arr2.(fill2 + 1) <- arr1.(it);
+          aux arr1 fill1 arr2 fill2 (it + 1))
+      in
+      aux arr1 fill1 arr2 fill2 0)
+;;
+
+let table_get table name =
+  match StringMap.find_opt name table with
+  | None -> None
+  | Some v -> Some v
+;;
+
+let rec get (env : env) name =
+  match env with
+  | arr, fill ->
+    if fill == -1
+    then None
+    else (
+      match table_get arr.(fill) name with
+      | None -> get (arr, fill - 1) name
+      | Some v -> Some v)
+;;
+
+let init_env : env = Array.init env_size (fun _ -> StringMap.empty), 0
 
 let rec string_of_object_type = function
   | Integer i -> string_of_int i

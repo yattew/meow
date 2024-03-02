@@ -39,18 +39,18 @@ let is_letter c =
   || c = '_'
 ;;
 
+let is_digit c =
+  let ascii_value = Char.code c in
+  ascii_value >= Char.code '0' && ascii_value <= Char.code '9'
+;;
+
 let read_identifier lexer =
   let rec aux lexer acc =
-    if is_letter lexer.ch
+    if is_letter lexer.ch || is_digit lexer.ch
     then aux (read_char lexer) (lexer.ch :: acc)
     else lexer, acc |> List.rev |> Utils.string_of_char_list
   in
   aux lexer []
-;;
-
-let is_digit c =
-  let ascii_value = Char.code c in
-  ascii_value >= Char.code '0' && ascii_value <= Char.code '9'
 ;;
 
 let read_number lexer =

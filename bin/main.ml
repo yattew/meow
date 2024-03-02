@@ -2,7 +2,7 @@ open Meow
 
 let main_env =
   let open Object in
-  Env.add Env.init_env "print_endl" (Object.Builtin Builtins.print_endl)
+  add init_env "print_endl" (Object.Builtin Builtins.print_endl)
 ;;
 
 let rec start_repl env =

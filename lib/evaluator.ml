@@ -80,7 +80,7 @@ let rec eval_if_expression env = function
     else eval_block_statement env alternative
   | _ -> raise (Failure "can't be reached")
 
-and eval_expression env node =
+and eval_expression (env : Object.env) node =
   let open Ast in
   match node with
   | Integer_expression i -> Integer i
@@ -93,7 +93,7 @@ and eval_expression env node =
     eval_infix_expression l_evaluated op r_evaluated
   | If_expression expr -> eval_if_expression env (If_expression expr)
   | Identifier_expression id ->
-    (match Env.get env id with
+    (match get env id with
      | Some obj -> obj
      | None ->
        raise
@@ -106,15 +106,13 @@ and eval_expression env node =
      | Function { parameters; body; env = internal_env } ->
        let rec env_table_of_args names objects =
          match names, objects with
-         | [], [] -> Env.init_env
+         | [], [] -> init_env
          | name :: names, obj :: objects ->
-           Env.add (env_table_of_args names objects) name obj
+           add (env_table_of_args names objects) name obj
          | _ -> raise (Failure "unreachable, number of arguments != params")
        in
        let param_env = env_table_of_args parameters evaluated_args in
-       let fn_env =
-         Env.extend_env param_env @@ Env.extend_env env internal_env
-       in
+       let fn_env = extend_env param_env @@ extend_env env internal_env in
        (match eval_block_statement fn_env body with
         | Return_value obj -> obj
         | obj -> obj)
@@ -123,7 +121,7 @@ and eval_expression env node =
   | _ -> raise (Failure "unknown expression found")
 
 and eval_statement env = function
-  | Let_statement (id, exp) -> eval_expression env exp |> Env.add env id, Null
+  | Let_statement (id, exp) -> eval_expression env exp |> add env id, Null
   | Return_statement expr -> env, Return_value (eval_expression env expr)
   | Expression_statement expr -> env, eval_expression env expr
 
